@@ -1,0 +1,175 @@
+---
+title: "Untitled"
+format: html
+editor: visual
+---
+
+## R Project
+
+Using the data set from Kaggle: Spaceship Titanic. For this project, you will analyze the data set. The Kaggle project is asking for us to do machine learning, but we're just going to use our brains to draw conclusions from the data set.
+
+## Collecting the Data
+
+```{r}
+titanic <- read.csv("/Users/kathleenbasco/Desktop/Kaggle/train.csv", header = TRUE, stringsAsFactors = FALSE)
+
+```
+
+We want to view the data and understand the steps we need to take to analyze.
+
+```{r}
+head(titanic) # displays first 6 rows of the dataset
+tail(titanic) # displays last 6 rows of the dataset
+summary(titanic) # displays statistics for each variable
+str(titanic) # displays info about the structure of the dataset
+
+```
+
+## Identifying Missing Data
+
+There will be inconsistencies, so it's important to note what is missing in the data. Seeing how much of the data has missing values:
+
+```{r}
+sapply(X = train, FUN = function(x) sum(is.na(x)))
+```
+
+```{r}
+filter(train,((Age < 13) &
+             ((is.na(RoomService)) |
+             (is.na(FoodCourt)) |
+             (is.na(ShoppingMall)) |
+             (is.na(Spa)) |
+             (is.na(VRDeck))))) %>%
+             select(Age,RoomService,FoodCourt,ShoppingMall,Spa,VRDeck)
+```
+
+Missing values in the luxuries are: \
+RoomService - 181\
+FoodCourt - 183\
+ShoppingMall - 208\
+Spa - 183\
+VRDeck - 188\
+Let us get a glimpse of individuals with age less than 13 and associated luxury columns containing NAs.
+
+## Analyze and Visualize Data
+
+The correlation with HomePlanet is 11.55%.
+
+```{r}
+train %>%
+select(CryoSleep, Age) %>%
+cor(use = "complete.obs")
+```
+
+Correlation with Planets:
+
+```{r}
+# Analyze the distribution planet
+ggplot(train, aes(HomePlanet, fill = Transported))+
+  geom_bar(position = "dodge", stat = "count")+ 
+stat_count(geom = "label", colour = "white", size = 3.5,
+aes(label = ..count..),position = position_dodge(width = .9), show.legend = FALSE)+
+  labs(title = "Transportation by Home Planet",
+       x = "Home Planet",
+       y = "Totals")
+
+#Majority of people are coming from planet Earth. 
+```
+
+```{r}
+
+# Coorelation of those Transported and Home planet
+ggplot(train, aes(HomePlanet, Planet_odds))+ 
+  geom_col(aes(fill = HomePlanet, show.legend = FALSE)) +
+  geom_label(aes(label = Planet_odds, vjust = 1.5))+
+  labs(title = "Odds of Teleportation by Home Planet",
+       x = "Home Planet",
+       y = "Odds of Teleportation")+
+  theme(axis.text.y = element_text(size = 1.5))
+
+# Europeans are more likely to be transported
+```
+
+# **Age**
+
+```{r}
+ggplot(AgeBins_Odds_Simplified, aes(AgeBins, AgeBins_odds))+ 
+  geom_col(aes(fill = AgeBins, show.legend = FALSE)) +
+  geom_label(aes(label = AgeBins_odds, vjust = 1.5))+
+  labs(title = "Odds of Teleportation by Age",
+       x = "Age",
+       y = "Odds of Teleportation")+
+  theme(axis.text.y = element_text(size = 1.5))
+```
+
+# Expenses
+
+```{r}
+# Minimum age spent on luxuries
+
+explore <- train %>%
+           filter((RoomService > 0) |
+           (FoodCourt > 0) |
+           (ShoppingMall > 0) |
+           (Spa > 0) |
+           (VRDeck > 0)) %>%
+           filter(!is.na(Age))
+
+explore %>%
+  summarise_if(is.numeric,min) %>%
+    select(Age)
+
+# Comes out to be 13 years old(same value is found in test set).
+```
+
+```{r}
+train %>% 
+  group_by(Transported) %>% 
+  summarise(Average_Spent = mean(Total_Debt)) %>% 
+  mutate(Average_Spent = dollar(Average_Spent, accuracy = 1e-02)) %>% 
+  ggplot(aes(Transported, Average_Spent, fill = Transported))+
+  geom_col()+ 
+  geom_label(aes(label = Average_Spent), color = "red", fill = "white", show.legend = FALSE, nudge_y = -0.1)+
+  labs(title = "Teleportation Status by Average Spent",
+       x = "Teleportation Status",
+       y = "Average Spent")
+
+#The ones who were teleported spent approximately $1,1118.46 than those who were not
+```
+
+```{r}
+#Build the correlation matrix
+train %>%
+select(RoomService,FoodCourt,ShoppingMall,Spa,VRDeck,Transported) %>%
+cor(use = "complete.obs") %>%
+corrplot(type = 'upper')
+```
+
+```{r}
+ggplot(train, aes(CryoSleep, fill = vip_plot))+ 
+  geom_col(aes(fill = CryoSleep, show.legend = FALSE)) +
+  geom_label(aes(label = vip_plot, vjust = 1.5))+
+  labs(title = "Odds of Teleportation by Cryosleep Status",
+       x = "Cryosleep Status",
+       y = "Odds of Teleportation")+
+  theme(axis.text.y = element_text(size = 1.5))
+```
+
+# CryoSleep
+
+```{r}
+CrossTable(train$CryoSleep, train$Transported, prop.c = FALSE, prop.r = TRUE, prop.t = FALSE, expected = FALSE, prop.chi = FALSE)
+```
+
+```{r}
+#Analyze the distribution of CryoSleep
+ggplot(train, aes(CryoSleep, fill = Transported))+
+  geom_bar(position = "dodge", stat = "count")+ 
+stat_count(geom = "label", colour = "white", size = 3.5,
+aes(label = ..count..),position = position_dodge(width = .9), show.legend = FALSE)+
+  labs(title = "Teleported by Cryosleep Status",
+       x = "CryoSleep status",
+       y = "Totals")
+
+#Those in CryoSleep are more likely to be teleported. 
+```
